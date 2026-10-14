@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consultancy Agency Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script>
+  // Supabase settings (Project Settings in Supabase). The publishable key is
+  // meant to be public; the access rules in schema.sql control the data.
+  // While SUPABASE_URL is a placeholder, the page runs in preview mode.
+  window.TRACKER_CONFIG = {
+    SUPABASE_URL: "https://ucbjtdvcoskdorenzfka.supabase.co",
+    SUPABASE_ANON_KEY: "sb_publishable_YCSoFxH1CC21whsZpBl_pw_IFpmBsud",
+    TEAM_NAME: "LCF Student Consultancy Agency",
+    // The tabs. To add one, add a line here; the id is saved with each task.
+    TABS: [
+      { id: "hanged-empress", name: "Hanged Empress", about: "Client project" },
+      { id: "consultancy-program", name: "Consultancy Program", about: "A program for students and businesses to help each other grow" }
+    ]
+  };
+</script>
+<style>
+/* Layout: title, a tab bar, then a full-width task board for the active tab */
+:root {
+  --bg: #f6f7fa; --surface: #ffffff; --ink: #161a2e; --muted: #5d6380; --line: #dfe2ec;
+  --accent: #2f3fd0; --accent-ink: #ffffff; --accent-soft: #e8eafc;
+  --ok: #1f7a4d; --ok-soft: #e2f3ea; --warn: #9a5b00; --warn-soft: #fbf0dc;
+  --bad: #b3261e; --bad-soft: #fbe5e3;
+  --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10121c; --surface: #191c2a; --ink: #e8eaf4; --muted: #9ca2bf; --line: #2a2e42;
+    --accent: #8f9bff; --accent-ink: #10121c; --accent-soft: #232848;
+    --ok: #6fd3a0; --ok-soft: #173225; --warn: #f0b35a; --warn-soft: #33270f;
+    --bad: #ff8a80; --bad-soft: #3a1a18;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 4px 0 0; text-wrap: balance; }
+h2 { font: 600 18px var(--display); margin: 0; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.danger { color: var(--bad); }
+.btn.small { padding: 4px 9px; font-size: 13px; }
+
+input, select, textarea { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+textarea { min-height: 80px; resize: vertical; }
+label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+
+.banner { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 16px; }
+
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 20px; overflow-x: auto; }
+.tab { border: 0; background: none; padding: 10px 14px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  font: 600 16px var(--display); color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.count { font: 500 12px var(--mono); background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
+
+.panel-head { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.panel-head .meta { color: var(--muted); font-size: 14px; }
+.filters { display: flex; gap: 8px; align-items: center; }
+.filters select { width: auto; }
+
+.summary { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+.summary b { font: 600 18px var(--display); color: var(--ink); margin-right: 4px; font-variant-numeric: tabular-nums; }
+.summary .overdue b { color: var(--bad); }
+
+.board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 960px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.col { background: color-mix(in srgb, var(--line) 35%, transparent); border-radius: 12px; padding: 10px; display: grid; gap: 8px; align-content: start; min-height: 120px; }
+.col h3 { margin: 2px 4px 4px; font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+.task { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; cursor: pointer; text-align: left; width: 100%; }
+.task:hover { border-color: var(--muted); }
+.task .t { font-weight: 500; overflow-wrap: anywhere; }
+.task .m { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; color: var(--muted); }
+.task .due { font-family: var(--mono); }
+.task .due.late { color: var(--bad); font-weight: 600; }
+.tab.archive-tab { margin-left: auto; font-size: 14px; }
+.tab.archive-tab .count { background: var(--line); color: var(--muted); }
+.archive { display: grid; gap: 8px; max-width: 860px; }
+.arow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.arow .info { flex: 1 1 260px; min-width: 0; display: grid; gap: 2px; }
+.arow .t { font-weight: 500; overflow-wrap: anywhere; }
+.arow .m { font-size: 12px; color: var(--muted); }
+.arow .acts { display: flex; gap: 8px; }
+.empty { color: var(--muted); font-size: 13px; padding: 8px 4px; }
+
+/* Dialog */
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 0; width: min(520px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(10, 12, 24, .45); }
+dialog form { display: grid; gap: 14px; padding: 22px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+.actions { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+.actions .right { display: flex; gap: 8px; margin-left: auto; }
+
+.hint { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
+.team-list { display: grid; gap: 8px; }
+.team-row { display: flex; gap: 8px; align-items: center; }
+.team-row input { flex: 1; min-width: 0; }
+.team-row .btn { flex: none; }
+.toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) { .task, .tab { transition: border-color .12s, color .12s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner" id="demoBanner" hidden>Preview mode: example data only, nothing is saved. Add your Supabase Project URL to connect.</div>
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="teamName">Team tracker</div>
+      <h1>Team tracker</h1>
+    </div>
+    <button class="btn" id="openTeam" type="button">Team</button>
+  </header>
+
+  <!-- App -->
+  <main id="app">
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+    <section role="tabpanel" id="boardPanel">
+      <div class="panel-head">
+        <div class="meta" id="panelMeta"></div>
+        <div class="filters">
+          <select id="ownerFilter" aria-label="Filter by owner"></select>
+          <button class="btn small primary" id="addTask" type="button">Add task</button>
+        </div>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="board" id="board"></div>
+    </section>
+    <section role="tabpanel" id="archivePanel" hidden>
+      <div class="panel-head">
+        <div class="meta">Deleted tasks from both tabs, newest first. Restore puts a task back where it was.</div>
+      </div>
+      <div class="archive" id="archiveList"></div>
+    </section>
+  </main>
+</div>
+
+<!-- Task dialog -->
+<dialog id="taskDlg">
+  <form id="taskForm">
+    <h2 id="taskDlgTitle">Add task</h2>
+    <label>Task<input id="tTitle" required maxlength="200"></label>
+    <div class="grid2">
+      <label>Tab<select id="tTab"></select></label>
+      <label>Owner<select id="tOwner"></select></label>
+      <label>Status<select id="tStatus"></select></label>
+      <label>Due<input id="tDue" type="date"></label>
+    </div>
+    <label>Notes<textarea id="tNotes"></textarea></label>
+    <div class="actions">
+      <button class="btn danger" id="tDelete" type="button" hidden>Delete task</button>
+      <div class="right">
+        <button class="btn" id="tCancel" type="button">Cancel</button>
+        <button class="btn primary" id="tSave" type="button">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Team dialog -->
+<dialog id="teamDlg">
+  <form id="teamForm">
+    <h2>Team</h2>
+    <p class="hint">Edit a name and it updates on every task. Removing someone makes their tasks unassigned.</p>
+    <div id="teamList" class="team-list"></div>
+    <div class="team-row">
+      <input id="newMember" maxlength="80" placeholder="New teammate's name" aria-label="New teammate's name">
+      <button class="btn primary" id="addMember" type="button">Add</button>
+    </div>
+    <div class="actions"><div class="right"><button class="btn" id="teamDone" type="button">Done</button></div></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+const CFG = window.TRACKER_CONFIG;
+const TABS = CFG.TABS;
+const STATUSES = ["To do", "In progress", "Blocked", "Done"];
+const $ = (id) => document.getElementById(id);
+const PREVIEW = CFG.SUPABASE_URL.startsWith("__") || typeof window.supabase === "undefined";
+
+/* ── Data layer: Supabase when deployed, in-memory examples in preview ── */
+function supabaseStore() {
+  const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  const err = (r) => (r.error ? r.error.message : null);
+  return {
+    async load() {
+      const r = await sb.from("tasks").select("*").order("due_date", { ascending: true, nullsFirst: false });
+      if (r.error) throw new Error(r.error.message);
+      return r.data;
+    },
+    async save(row, id) { return err(id ? await sb.from("tasks").update(row).eq("id", id) : await sb.from("tasks").insert(row)); },
+    async archive(id) { return err(await sb.from("tasks").update({ archived_at: new Date().toISOString() }).eq("id", id)); },
+    async restore(id) { return err(await sb.from("tasks").update({ archived_at: null }).eq("id", id)); },
+    async remove(id) { return err(await sb.from("tasks").delete().eq("id", id)); },
+    async team() {
+      const r = await sb.from("team").select("id,name").order("created_at");
+      if (r.error) throw new Error(r.error.message);
+      return r.data;
+    },
+    async addMember(name) { return err(await sb.from("team").insert({ name })); },
+    async renameMember(id, from, to) {
+      return err(await sb.from("team").update({ name: to }).eq("id", id)) || err(await sb.from("tasks").update({ owner: to }).eq("owner", from));
+    },
+    async removeMember(id, name) {
+      return err(await sb.from("tasks").update({ owner: null }).eq("owner", name)) || err(await sb.from("team").delete().eq("id", id));
+    },
+    subscribe(cb) {
+      let t; const fire = () => { clearTimeout(t); t = setTimeout(cb, 300); };
+      sb.channel("tracker")
+        .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, fire)
+        .on("postgres_changes", { event: "*", schema: "public", table: "team" }, fire)
+        .subscribe();
+    }
+  };
+}
+
+function previewStore() {
+  const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  let tasks = [
+    { id: "t1", tab: "hanged-empress", title: "Example: review three similar brands", owner: "Mahiro", status: "In progress", due_date: day(3) },
+    { id: "t2", tab: "hanged-empress", title: "Example: draft social content ideas", owner: "Teammate 1", status: "To do", due_date: day(9) },
+    { id: "t3", tab: "hanged-empress", title: "Example: kick off call notes", owner: "Teammate 2", status: "Done", due_date: day(-6) },
+    { id: "t4", tab: "hanged-empress", title: "Example: waiting on brand assets", owner: "Teammate 1", status: "Blocked", due_date: null },
+    { id: "t5", tab: "consultancy-program", title: "Example: outline how students and businesses get matched", owner: "Mahiro", status: "To do", due_date: day(-1) },
+    { id: "t6", tab: "consultancy-program", title: "Example: list businesses to approach", owner: null, status: "To do", due_date: day(5) },
+    { id: "t7", tab: "consultancy-program", title: "Example: draft student sign up form", owner: "Teammate 2", status: "In progress", due_date: day(6) },
+    { id: "t8", tab: "hanged-empress", title: "Example: old moodboard task", owner: "Mahiro", status: "To do", due_date: null, archived_at: new Date(Date.now() - 2 * 864e5).toISOString() }
+  ];
+  let team = [{ id: "m1", name: "Mahiro" }, { id: "m2", name: "Teammate 1" }, { id: "m3", name: "Teammate 2" }];
+  return {
+    async load() { return structuredClone(tasks); },
+    async save(row, id) {
+      if (id) Object.assign(tasks.find(t => t.id === id), row);
+      else tasks.push({ id: Math.random().toString(36).slice(2), ...row });
+      return null;
+    },
+    async archive(id) { tasks.find(t => t.id === id).archived_at = new Date().toISOString(); return null; },
+    async restore(id) { tasks.find(t => t.id === id).archived_at = null; return null; },
+    async remove(id) { tasks = tasks.filter(t => t.id !== id); return null; },
+    async team() { return structuredClone(team); },
+    async addMember(name) { team.push({ id: Math.random().toString(36).slice(2), name }); return null; },
+    async renameMember(id, from, to) {
+      team.find(m => m.id === id).name = to;
+      tasks.forEach(t => { if (t.owner === from) t.owner = to; });
+      return null;
+    },
+    async removeMember(id, name) {
+      team = team.filter(m => m.id !== id);
+      tasks.forEach(t => { if (t.owner === name) t.owner = null; });
+      return null;
+    },
+    subscribe() {}
+  };
+}
+
+const store = PREVIEW ? previewStore() : supabaseStore();
+const fromHash = location.hash === "#archive" ? { id: "archive" } : TABS.find(t => "#" + t.id === location.hash);
+const state = { tasks: [], archived: [], team: [], tab: (fromHash || TABS[0]).id, owner: "", editing: null };
+
+$("teamName").textContent = CFG.TEAM_NAME;
+$("demoBanner").hidden = !PREVIEW;
+$("tStatus").innerHTML = STATUSES.map(s => `<option>${s}</option>`).join("");
+
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+}
+$("tTab").replaceChildren(...TABS.map(t => el("option", { value: t.id }, t.name)));
+
+function toast(text) {
+  const t = $("toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2400);
+}
+function today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function fmtDate(s) { return new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+function isLate(t) { return t.due_date && t.status !== "Done" && new Date(t.due_date + "T00:00:00") < today(); }
+
+
+async function boot() {
+  await loadAll();
+  store.subscribe(loadAll);
+}
+
+async function loadAll() {
+  try {
+    const [all, team] = await Promise.all([store.load(), store.team()]);
+    state.tasks = all.filter(t => !t.archived_at);
+    state.archived = all.filter(t => t.archived_at).sort((a, b) => b.archived_at.localeCompare(a.archived_at));
+    state.team = team; render();
+  }
+  catch { toast("Couldn't load tasks. Check your connection and refresh."); }
+}
+
+/* ── Render ── */
+function render() {
+  const openIn = (id) => state.tasks.filter(t => t.tab === id && t.status !== "Done").length;
+
+  const go = (id) => { state.tab = id; render(); try { history.replaceState(null, "", "#" + id); } catch {} };
+  $("tabs").replaceChildren(
+    ...TABS.map(t => el("button", { class: "tab", type: "button", role: "tab", "aria-selected": String(state.tab === t.id), onclick: () => go(t.id) },
+      t.name, el("span", { class: "count", title: "Open tasks" }, String(openIn(t.id))))),
+    el("button", { class: "tab archive-tab", type: "button", role: "tab", "aria-selected": String(state.tab === "archive"), onclick: () => go("archive") },
+      "Archive", el("span", { class: "count", title: "Archived tasks" }, String(state.archived.length))));
+
+  if ($("teamDlg").open) renderTeam();
+  const inArchive = state.tab === "archive";
+  $("boardPanel").hidden = inArchive; $("archivePanel").hidden = !inArchive;
+  if (inArchive) return renderArchive();
+
+  const tab = TABS.find(t => t.id === state.tab);
+  $("panelMeta").textContent = tab.about || "";
+
+  const owners = [...new Set([...state.team.map(m => m.name), ...state.tasks.map(t => t.owner).filter(Boolean)])];
+  const keep = state.owner;
+  $("ownerFilter").replaceChildren(el("option", { value: "" }, "Everyone"), ...owners.map(o => el("option", { value: o }, o)));
+  $("ownerFilter").value = owners.includes(keep) ? keep : "";
+
+  const tasks = state.tasks.filter(t => t.tab === state.tab && (!state.owner || t.owner === state.owner));
+  const open = tasks.filter(t => t.status !== "Done");
+  const late = open.filter(isLate).length;
+  const week = open.filter(t => t.due_date && !isLate(t) && (new Date(t.due_date + "T00:00:00") - today()) / 864e5 <= 7).length;
+  $("summary").replaceChildren(
+    el("span", {}, el("b", {}, String(open.length)), "open"),
+    el("span", { class: late ? "overdue" : "" }, el("b", {}, String(late)), "overdue"),
+    el("span", {}, el("b", {}, String(week)), "due this week"),
+    el("span", {}, el("b", {}, String(tasks.length - open.length)), "done"));
+
+  const board = $("board"); board.replaceChildren();
+  for (const s of STATUSES) {
+    const items = tasks.filter(t => t.status === s);
+    const col = el("div", { class: "col" }, el("h3", {}, el("span", {}, s), el("span", {}, String(items.length))));
+    if (!items.length) col.append(el("div", { class: "empty" }, s === "To do" ? "Nothing waiting." : "None"));
+    for (const t of items) {
+      col.append(el("button", { class: "task", type: "button", onclick: () => openTask(t) },
+        el("span", { class: "t" }, t.title),
+        el("span", { class: "m" },
+          el("span", {}, t.owner || "Unassigned"),
+          t.due_date ? el("span", { class: "due" + (isLate(t) ? " late" : "") }, (isLate(t) ? "Overdue · " : "Due ") + fmtDate(t.due_date)) : null)));
+    }
+    board.append(col);
+  }
+}
+
+function renderArchive() {
+  const list = $("archiveList");
+  if (!state.archived.length) return list.replaceChildren(el("div", { class: "empty" }, "Nothing in the archive. Deleted tasks will show up here."));
+  const tabName = Object.fromEntries(TABS.map(t => [t.id, t.name]));
+  list.replaceChildren(...state.archived.map(t => {
+    const restore = el("button", { class: "btn small primary", type: "button" }, "Restore");
+    restore.onclick = async () => {
+      const error = await store.restore(t.id);
+      if (error) return toast("Couldn't restore: " + error);
+      toast(`Restored to ${tabName[t.tab] || "its tab"}`); loadAll();
+    };
+    const purge = el("button", { class: "btn small danger", type: "button" }, "Delete forever");
+    purge.onclick = async () => {
+      if (!purge.dataset.armed) { purge.dataset.armed = "1"; purge.textContent = "Click again, can't be undone"; return; }
+      const error = await store.remove(t.id);
+      if (error) return toast("Couldn't delete: " + error);
+      toast("Deleted for good"); loadAll();
+    };
+    const when = new Date(t.archived_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    return el("div", { class: "arow" },
+      el("div", { class: "info" },
+        el("span", { class: "t" }, t.title),
+        el("span", { class: "m" }, [tabName[t.tab] || t.tab, t.owner || "Unassigned", t.status, "Deleted " + when].join(" · "))),
+      el("div", { class: "acts" }, restore, purge));
+  }));
+}
+
+$("ownerFilter").addEventListener("change", (e) => { state.owner = e.target.value; render(); });
+
+/* ── Task dialog ── */
+function openTask(t) {
+  state.editing = t || null;
+  $("taskDlgTitle").textContent = t ? "Edit task" : "Add task";
+  $("tTab").value = t?.tab || (state.tab === "archive" ? TABS[0].id : state.tab);
+  const names = state.team.map(m => m.name);
+  if (t?.owner && !names.includes(t.owner)) names.push(t.owner);
+  $("tOwner").replaceChildren(el("option", { value: "" }, "Unassigned"), ...names.map(n => el("option", { value: n }, n)));
+  $("tTitle").value = t?.title || ""; $("tOwner").value = t?.owner || "";
+  $("tStatus").value = t?.status || "To do"; $("tDue").value = t?.due_date || ""; $("tNotes").value = t?.notes || "";
+  const del = $("tDelete");
+  del.hidden = !t;
+  del.onclick = async () => {
+    const error = await store.archive(t.id);
+    $("taskDlg").close();
+    if (error) return toast("Couldn't delete: " + error);
+    toast("Task moved to Archive"); loadAll();
+  };
+  $("taskDlg").showModal();
+}
+$("addTask").addEventListener("click", () => openTask());
+$("tCancel").addEventListener("click", () => $("taskDlg").close());
+$("taskForm").addEventListener("submit", (e) => { e.preventDefault(); saveTask(); });
+$("tSave").addEventListener("click", () => saveTask());
+$("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveTask(); } });
+async function saveTask() {
+  if (!$("taskForm").reportValidity()) return;
+  $("taskDlg").close();
+  const row = { title: $("tTitle").value.trim(), tab: $("tTab").value, owner: $("tOwner").value || null,
+    status: $("tStatus").value, due_date: $("tDue").value || null, notes: $("tNotes").value.trim() || null };
+  const error = await store.save(row, state.editing?.id);
+  if (error) return toast("Couldn't save task: " + error);
+  toast(state.editing ? "Task updated" : "Task added"); loadAll();
+}
+
+/* ── Team dialog ── */
+function renderTeam() {
+  const list = $("teamList");
+  if (list.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return; // not while typing a name
+  if (!state.team.length) return list.replaceChildren(el("div", { class: "empty" }, "No teammates yet. Add the first name below."));
+  list.replaceChildren(...state.team.map(m => {
+    const input = el("input", { value: m.name, maxlength: "80", "aria-label": "Teammate name", id: "member-" + m.id });
+    const save = async () => {
+      const to = input.value.trim();
+      if (!to || to === m.name) { input.value = m.name; return; }
+      if (state.team.some(x => x.id !== m.id && x.name.toLowerCase() === to.toLowerCase())) { input.value = m.name; return toast("That name is already on the team"); }
+      const error = await store.renameMember(m.id, m.name, to);
+      if (error) { input.value = m.name; return toast("Couldn't rename: " + error); }
+      toast(`Renamed to ${to}`); input.blur(); loadAll();
+    };
+    input.addEventListener("change", save);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+    const rm = el("button", { class: "btn danger small", type: "button" }, "Remove");
+    rm.onclick = async () => {
+      if (!rm.dataset.armed) { rm.dataset.armed = "1"; rm.textContent = "Confirm"; return; }
+      const error = await store.removeMember(m.id, m.name);
+      if (error) return toast("Couldn't remove: " + error);
+      toast(`${m.name} removed`); loadAll();
+    };
+    return el("div", { class: "team-row" }, input, rm);
+  }));
+}
+$("teamDone").addEventListener("click", () => $("teamDlg").close());
+$("teamForm").addEventListener("submit", (e) => e.preventDefault());
+$("openTeam").addEventListener("click", () => { renderTeam(); $("teamDlg").showModal(); });
+async function addMember() {
+  const name = $("newMember").value.trim();
+  if (!name) return;
+  if (state.team.some(m => m.name.toLowerCase() === name.toLowerCase())) return toast("That name is already on the team");
+  const error = await store.addMember(name);
+  if (error) return toast("Couldn't add: " + error);
+  $("newMember").value = ""; toast(`${name} added`); loadAll();
+}
+$("addMember").addEventListener("click", addMember);
+$("newMember").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addMember(); } });
+
+boot();
+</script>
+</body>
+</html>
