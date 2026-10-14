@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consultancy Agency Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Narrow:wght@400;600;700&family=Caveat:wght@600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script>
+  // Supabase settings (Project Settings in Supabase). The publishable key is
+  // meant to be public; the access rules in schema.sql control the data.
+  // While SUPABASE_URL is a placeholder, the page runs in preview mode.
+  window.TRACKER_CONFIG = {
+    SUPABASE_URL: "https://ucbjtdvcoskdorenzfka.supabase.co",
+    SUPABASE_ANON_KEY: "sb_publishable_YCSoFxH1CC21whsZpBl_pw_IFpmBsud",
+    TEAM_NAME: "LCF Student Consultancy Agency",
+    // The tabs. To add one, add a line here; the id is saved with each task.
+    TABS: [
+      { id: "hanged-empress", name: "Hanged Empress", about: "Client project" },
+      { id: "consultancy-program", name: "Consultancy Program", about: "A program for students and businesses to help each other grow" }
+    ]
+  };
+</script>
+<style>
+/* Layout: paper masthead with a blurred red word behind the title, a row of big condensed tabs, then the task board */
+:root {
+  --paper: #f0eee9; --card: #faf9f6; --ink: #0d0d0d; --grey: #a9a6a0; --muted: #6b6862; --line: #0d0d0d;
+  --red: #e3302a; --red-soft: #f6d9d6; --hot: #ff1408;
+  --display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --body: "Archivo Narrow", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  color: var(--ink); font: 16px/1.45 var(--body);
+  background-color: var(--paper);
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .11 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    linear-gradient(97deg, transparent 22%, rgba(0,0,0,.016) 23.2%, rgba(255,255,255,.35) 24%, transparent 25%),
+    linear-gradient(18deg, transparent 58%, rgba(255,255,255,.35) 58.8%, rgba(0,0,0,.016) 59.6%, transparent 60.4%),
+    radial-gradient(ellipse at 20% 10%, rgba(255,255,255,.7), transparent 55%),
+    radial-gradient(ellipse at 85% 80%, rgba(0,0,0,.05), transparent 60%);
+  min-height: 100vh;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px)); }
+
+/* Masthead */
+.topbar { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; font: 600 10px var(--body); letter-spacing: .5em; text-transform: uppercase; }
+.topbar .name { color: var(--muted); }
+.link { border: 0; background: none; padding: 4px 0; cursor: pointer; font: 700 11px var(--body); letter-spacing: .5em; text-transform: uppercase; color: var(--ink); }
+.link:hover { color: var(--red); }
+.masthead { position: relative; margin: 10px 0 4px; min-height: clamp(130px, 21vw, 230px); overflow-x: clip; overflow-y: visible; }
+.masthead .blur { pointer-events: none; position: absolute; top: -18px; right: -3%; padding: 24px 24px 24px 60px; font: 400 clamp(110px, 24vw, 280px)/.86 var(--display); color: var(--hot); letter-spacing: -.01em; filter: blur(clamp(6px, 1.1vw, 13px)) saturate(1.4); user-select: none; white-space: nowrap; }
+.masthead h1 { position: relative; margin: 0; max-width: 9.5ch; font: 400 clamp(40px, 6.4vw, 84px)/.92 var(--display); letter-spacing: -.005em; text-wrap: balance; }
+.masthead .scribble { position: absolute; left: 30%; bottom: 2px; width: min(46%, 520px); height: auto; pointer-events: none; }
+.rule { height: 0; margin-top: 6px; display: flex; justify-content: space-between; gap: 8px; border-top: 1.5px solid var(--ink); padding-top: 6px; margin-bottom: 26px; font: 600 9px var(--body); letter-spacing: .3em; text-transform: uppercase; overflow: hidden; white-space: nowrap; }
+
+.banner { border: 1.5px solid var(--red); color: var(--red); padding: 8px 12px; font: 600 12px var(--body); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 14px; }
+
+h2 { font: 400 28px/1 var(--display); text-transform: uppercase; margin: 0; letter-spacing: .01em; }
+
+.btn { border: 1.5px solid var(--ink); background: transparent; border-radius: 0; padding: 8px 14px; cursor: pointer; font: 700 12px var(--body); letter-spacing: .16em; text-transform: uppercase; }
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover { background: var(--red); border-color: var(--red); }
+.btn.danger { color: var(--red); border-color: var(--red); }
+.btn.danger:hover { background: var(--red); color: var(--paper); }
+.btn.small { padding: 5px 10px; font-size: 11px; }
+
+input, select, textarea { width: 100%; background: var(--card); border: 1.5px solid var(--ink); border-radius: 0; padding: 9px 10px; }
+textarea { min-height: 84px; resize: vertical; }
+label { display: grid; gap: 5px; font: 700 11px var(--body); letter-spacing: .18em; text-transform: uppercase; color: var(--ink); }
+
+/* Tabs */
+.tabs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 30px; margin-bottom: 22px; }
+.tab { border: 0; background: none; padding: 0 0 12px; cursor: pointer; display: flex; align-items: flex-start; gap: 6px; min-width: 0; text-align: left;
+  font: 400 clamp(28px, 4.6vw, 52px)/.95 var(--display); text-transform: uppercase; color: var(--grey); letter-spacing: .005em; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink);
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'><path d='M2 9 C 30 2, 50 13, 80 7 S 130 3, 150 8 S 185 12, 198 4' fill='none' stroke='%23e3302a' stroke-width='2.4' stroke-linecap='round'/></svg>") left bottom / 100% 12px no-repeat; }
+.count { font: 700 13px var(--body); color: var(--red); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.tab.small-tab { font-size: clamp(18px, 2.2vw, 24px); padding-bottom: 14px; }
+.tab.links-tab { margin-left: auto; }
+.links-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; align-items: start; }
+@media (max-width: 960px) { .links-grid { grid-template-columns: minmax(0, 1fr); } }
+.link-sec { display: grid; gap: 10px; }
+.link-sec h3 { margin: 0 0 2px; padding-bottom: 8px; border-bottom: 1.5px solid var(--ink); display: flex; justify-content: space-between; align-items: baseline;
+  font: 400 15px var(--display); letter-spacing: .45em; text-transform: uppercase; color: var(--red); }
+.link-sec h3 span:last-child { color: var(--ink); letter-spacing: 0; font: 700 13px var(--body); }
+.lrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px 12px; align-items: start; background: var(--card); border: 1.5px solid var(--ink); padding: 11px 12px; }
+.lrow:hover { box-shadow: 5px 5px 0 var(--red); transform: translate(-2px, -2px); }
+.ltype { font: 700 9px/1 var(--body); letter-spacing: .2em; text-transform: uppercase; padding: 5px 6px 5px 7px; background: var(--ink); color: var(--paper); margin-top: 2px; white-space: nowrap; }
+.ltype.doc { background: #2f5fd0; } .ltype.sheet { background: #1f7a4d; } .ltype.slides { background: #c98a00; } .ltype.drive { background: var(--red); }
+.linfo { min-width: 0; display: grid; gap: 4px; }
+.linfo a { font: 700 17px/1.2 var(--body); color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.linfo a:hover { color: var(--red); text-decoration: underline; text-underline-offset: 3px; }
+.linfo .note { font: 400 14px/1.35 var(--body); color: var(--muted); overflow-wrap: anywhere; }
+.linfo .m { font: 700 10px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--grey); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: no-preference) { .lrow { transition: box-shadow .15s, transform .15s; } }
+
+.panel-head { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.panel-head .meta { color: var(--grey); font: 600 clamp(18px, 2.2vw, 24px)/1.15 var(--body); max-width: 34ch; text-wrap: balance; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.filters select { width: auto; padding: 7px 10px; font: 600 13px var(--body); }
+
+.summary { display: flex; flex-wrap: wrap; gap: 8px 34px; margin-bottom: 22px; }
+.summary span { display: flex; align-items: baseline; gap: 8px; font: 700 11px var(--body); letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+.summary b { font: 400 40px/1 var(--display); color: var(--ink); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.summary .overdue b, .summary .overdue { color: var(--red); }
+
+.board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1100px) { .board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .board { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 12px; align-content: start; min-height: 120px; }
+.col h3 { margin: 0 0 2px; padding-bottom: 8px; border-bottom: 1.5px solid var(--ink); display: flex; justify-content: space-between; align-items: baseline;
+  font: 400 15px var(--display); letter-spacing: .45em; text-transform: uppercase; color: var(--red); }
+.col h3 span:last-child { color: var(--ink); letter-spacing: 0; font-family: var(--body); font-weight: 700; font-size: 13px; }
+.task { background: var(--card); border: 1.5px solid var(--ink); border-radius: 0; padding: 12px 13px; display: grid; gap: 8px; cursor: pointer; text-align: left; width: 100%; }
+.task:hover { box-shadow: 5px 5px 0 var(--red); transform: translate(-2px, -2px); }
+.task .t { font: 700 17px/1.2 var(--body); overflow-wrap: anywhere; }
+.task .m { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 700 10px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.task .due.late { color: var(--red); }
+.task .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.prio { flex: none; font: 700 9px/1 var(--body); letter-spacing: .22em; text-transform: uppercase; padding: 4px 6px 4px 7px; border: 1.5px solid var(--ink); }
+.prio.High { background: var(--red); border-color: var(--red); color: var(--paper); }
+.prio.Low { border-color: var(--grey); color: var(--muted); }
+.task .golink { justify-self: start; font: 700 10px var(--body); letter-spacing: .22em; text-transform: uppercase; color: var(--red); text-decoration: none; border-bottom: 1.5px solid var(--red); padding-bottom: 1px; }
+.task .golink:hover { color: var(--ink); border-color: var(--ink); }
+.task[draggable="true"] { cursor: grab; }
+.task.dragging { opacity: .35; }
+.col.drop { outline: 2px dashed var(--red); outline-offset: 6px; }
+
+.archive { display: grid; gap: 10px; max-width: 900px; }
+.arow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; background: var(--card); border: 1.5px solid var(--ink); padding: 12px 13px; }
+.arow .info { flex: 1 1 260px; min-width: 0; display: grid; gap: 4px; }
+.arow .t { font: 700 17px/1.2 var(--body); overflow-wrap: anywhere; }
+.arow .m { font: 700 10px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.arow .acts { display: flex; gap: 8px; }
+.empty { color: var(--grey); font: 600 14px var(--body); padding: 6px 0; }
+
+/* Dialogs */
+dialog { border: 2px solid var(--ink); border-radius: 0; background: var(--card); color: var(--ink); padding: 0; width: min(540px, calc(100vw - 32px)); box-shadow: 10px 10px 0 var(--red); }
+dialog::backdrop { background: rgba(240, 238, 233, .75); backdrop-filter: blur(3px); }
+dialog form { display: grid; gap: 16px; padding: 24px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+.actions { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-top: 4px; }
+.actions .right { display: flex; gap: 10px; margin-left: auto; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.team-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px 24px; margin-bottom: 24px; }
+.page-title { font: 400 clamp(40px, 6vw, 72px)/.9 var(--display); text-transform: uppercase; }
+.team-head .summary { margin: 0; }
+.team-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 860px) { .team-grid { grid-template-columns: minmax(0, 1fr); } }
+.sec { margin: 0; font: 400 15px var(--display); letter-spacing: .45em; text-transform: uppercase; color: var(--red); }
+.sec-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 8px; border-bottom: 1.5px solid var(--ink); }
+.members .sec { padding-bottom: 8px; border-bottom: 1.5px solid var(--ink); margin-bottom: 12px; }
+.contract-meta { margin: 10px 0 14px; font: 700 10px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.contract-body { background: var(--card); border: 1.5px solid var(--ink); padding: clamp(18px, 3vw, 32px); font: 400 17px/1.6 var(--body); }
+.contract-body { overflow-wrap: anywhere; }
+.contract-body > :first-child { margin-top: 0; }
+.contract-body > :last-child { margin-bottom: 0; }
+.contract-body p, .contract-body div { margin: 0 0 .9em; max-width: 68ch; }
+.contract-body ul, .contract-body ol { margin: 0 0 .9em; padding-left: 1.6em; max-width: 66ch; }
+.contract-body li { margin: .2em 0; }
+.contract-body blockquote { margin: 0 0 .9em 2.2em; padding: 0; border: 0; }
+.contract-body h2, .contract-body h3 { font: 400 24px/1.1 var(--display); text-transform: uppercase; margin: 1.1em 0 .5em; letter-spacing: .01em; }
+.contract-body h3 { font-size: 19px; }
+.contract-body[contenteditable="true"] { min-height: 420px; outline: none; box-shadow: 6px 6px 0 var(--red); cursor: text; }
+.contract-body[contenteditable="true"]:empty::before { content: attr(data-placeholder); color: var(--grey); }
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 3; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 12px 0 10px; padding: 6px; background: var(--ink); }
+.toolbar .sep { width: 1px; align-self: stretch; background: #4a4845; margin: 2px 4px; }
+.tool { min-width: 34px; height: 32px; display: inline-grid; place-items: center; padding: 0 8px; border: 0; background: transparent; color: var(--paper); cursor: pointer; font: 700 15px var(--body); }
+.tool:hover { background: #2b2a28; }
+.tool[aria-pressed="true"] { background: var(--red); color: var(--paper); }
+.tool svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+.tool select { background: transparent; color: var(--paper); border: 0; font: 700 12px var(--body); letter-spacing: .1em; text-transform: uppercase; padding: 4px; }
+.tool select option { color: var(--ink); }
+#contractEdit .actions { margin-top: 12px; align-items: end; }
+label.inline { display: flex; align-items: center; gap: 10px; }
+label.inline select { width: auto; }
+.member-list { display: grid; gap: 10px; margin: 12px 0 16px; }
+.member { background: var(--card); border: 1.5px solid var(--ink); padding: 12px; display: grid; gap: 10px; }
+.member .row { display: flex; gap: 8px; align-items: center; }
+.member .row input { flex: 1; min-width: 0; padding: 6px 8px; }
+.member .row input.name { font-weight: 700; }
+.member .row .btn { flex: none; }
+.sig { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; border-top: 1px dashed var(--grey); padding-top: 10px; }
+.sig .ink { font: 600 30px/1 "Caveat", "Segoe Script", "Bradley Hand", cursive; color: var(--red); }
+.sig .when { font: 700 10px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.sig .stale { font: 700 10px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--red); }
+.sig .unsigned { font: 700 10px var(--body); letter-spacing: .2em; text-transform: uppercase; color: var(--grey); }
+.sign-form { display: flex; gap: 8px; width: 100%; }
+.sign-form input { flex: 1; min-width: 0; font: 600 22px/1 "Caveat", "Segoe Script", cursive; padding: 6px 8px; }
+.add-member { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+@media (max-width: 420px) { .add-member { grid-template-columns: 1fr; } }
+.hint { margin: -6px 0 0; font: 600 14px/1.35 var(--body); color: var(--grey); }
+.team-list { display: grid; gap: 8px; }
+.team-row { display: flex; gap: 8px; align-items: center; }
+.team-row input { flex: 1; min-width: 0; }
+.team-row .btn { flex: none; }
+.toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; font: 700 12px var(--body); letter-spacing: .18em; text-transform: uppercase; }
+@media (prefers-reduced-motion: no-preference) { .task { transition: box-shadow .15s, transform .15s; } .tab { transition: color .12s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner" id="demoBanner" hidden>Preview mode: example data only, nothing is saved. Add your Supabase Project URL to connect.</div>
+  <header class="top">
+    <div class="topbar">
+      <span class="name" id="today"></span>
+      <button class="link" id="openTeam" type="button">Team &rarr;</button>
+      <button class="link" id="backToTracker" type="button" hidden>&larr; Tracker</button>
+    </div>
+    <div class="masthead">
+      <span class="blur" aria-hidden="true">TRACKER</span>
+      <h1 id="teamName">LCF Student Consultancy Agency</h1>
+      <svg class="scribble" viewBox="0 0 520 70" aria-hidden="true"><path d="M4 58 C 60 20, 120 64, 170 40 C 205 24, 200 6, 186 12 C 172 18, 190 36, 222 34 C 290 30, 330 8, 390 22 C 440 34, 470 50, 516 30" fill="none" stroke="#0d0d0d" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </div>
+    <div class="rule" aria-hidden="true"></div>
+  </header>
+
+  <div class="banner" id="loadError" role="alert" hidden></div>
+
+  <!-- App -->
+  <main id="app">
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+    <section role="tabpanel" id="boardPanel">
+      <div class="panel-head">
+        <div class="meta" id="panelMeta"></div>
+        <div class="filters">
+          <select id="ownerFilter" aria-label="Filter by owner"></select>
+          <button class="btn small primary" id="addTask" type="button">Add task</button>
+        </div>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="board" id="board"></div>
+    </section>
+    <section role="tabpanel" id="archivePanel" hidden>
+      <div class="panel-head">
+        <div class="meta">Deleted tasks from both tabs, newest first. Restore puts a task back where it was.</div>
+      </div>
+      <div class="archive" id="archiveList"></div>
+    </section>
+    <section role="tabpanel" id="linksPanel" hidden>
+      <div class="panel-head">
+        <div class="meta">Shortcuts to the team's Drive folders, docs and files. Anyone can add one.</div>
+        <div class="filters"><button class="btn small primary" id="addLink" type="button">Add link</button></div>
+      </div>
+      <div class="links-grid" id="linksGrid"></div>
+    </section>
+  </main>
+
+  <!-- Team page -->
+  <section id="teamPage" hidden>
+    <div class="team-head">
+      <h2 class="page-title">The team</h2>
+      <div class="summary" id="signSummary"></div>
+    </div>
+    <div class="team-grid">
+      <article class="contract">
+        <div class="sec-head">
+          <h3 class="sec">Team contract</h3>
+          <button class="btn small" id="editContract" type="button">Edit</button>
+        </div>
+        <div class="contract-meta" id="contractMeta"></div>
+        <div class="toolbar" id="contractTools" role="toolbar" aria-label="Formatting" hidden>
+          <span class="tool"><select id="blockStyle" aria-label="Text style"><option value="p">Normal</option><option value="h2">Heading</option><option value="h3">Subheading</option></select></span>
+          <span class="sep"></span>
+          <button class="tool" type="button" data-cmd="bold" title="Bold (Cmd/Ctrl+B)" aria-label="Bold"><b>B</b></button>
+          <button class="tool" type="button" data-cmd="italic" title="Italic (Cmd/Ctrl+I)" aria-label="Italic"><i style="font-family:Georgia,serif">I</i></button>
+          <button class="tool" type="button" data-cmd="underline" title="Underline (Cmd/Ctrl+U)" aria-label="Underline"><u>U</u></button>
+          <span class="sep"></span>
+          <button class="tool" type="button" data-cmd="insertUnorderedList" title="Bullet list" aria-label="Bullet list"><svg viewBox="0 0 20 20"><circle cx="4" cy="5" r="1.2" fill="currentColor"/><circle cx="4" cy="10" r="1.2" fill="currentColor"/><circle cx="4" cy="15" r="1.2" fill="currentColor"/><path d="M8 5h9M8 10h9M8 15h9"/></svg></button>
+          <button class="tool" type="button" data-cmd="insertOrderedList" title="Numbered list" aria-label="Numbered list"><svg viewBox="0 0 20 20"><path d="M8 5h9M8 10h9M8 15h9"/><text x="1.5" y="7" font-size="6" fill="currentColor" stroke="none" font-family="Arial">1</text><text x="1.5" y="12" font-size="6" fill="currentColor" stroke="none" font-family="Arial">2</text><text x="1.5" y="17" font-size="6" fill="currentColor" stroke="none" font-family="Arial">3</text></svg></button>
+          <span class="sep"></span>
+          <button class="tool" type="button" data-cmd="justifyLeft" title="Align left" aria-label="Align left"><svg viewBox="0 0 20 20"><path d="M3 5h14M3 9h9M3 13h14M3 17h9"/></svg></button>
+          <button class="tool" type="button" data-cmd="justifyCenter" title="Align centre" aria-label="Align centre"><svg viewBox="0 0 20 20"><path d="M3 5h14M5.5 9h9M3 13h14M5.5 17h9"/></svg></button>
+          <button class="tool" type="button" data-cmd="justifyRight" title="Align right" aria-label="Align right"><svg viewBox="0 0 20 20"><path d="M3 5h14M8 9h9M3 13h14M8 17h9"/></svg></button>
+          <span class="sep"></span>
+          <button class="tool" type="button" data-cmd="outdent" title="Decrease indent" aria-label="Decrease indent"><svg viewBox="0 0 20 20"><path d="M9 5h8M9 10h8M9 15h8M6 7.5 3 10l3 2.5"/></svg></button>
+          <button class="tool" type="button" data-cmd="indent" title="Increase indent" aria-label="Increase indent"><svg viewBox="0 0 20 20"><path d="M9 5h8M9 10h8M9 15h8M3 7.5 6 10l-3 2.5"/></svg></button>
+          <span class="sep"></span>
+          <button class="tool" type="button" data-cmd="removeFormat" title="Clear formatting" aria-label="Clear formatting"><svg viewBox="0 0 20 20"><path d="M5 4h10M10 4l-3 12M4 16l12-12" /></svg></button>
+        </div>
+        <div class="contract-body" id="contractBody" aria-label="Team contract" data-placeholder="Write or paste your team contract here."></div>
+        <div id="contractEdit" hidden>
+          <div class="actions">
+            <label class="inline">Edited by<select id="contractBy"></select></label>
+            <div class="right">
+              <button class="btn" id="cancelContract" type="button">Cancel</button>
+              <button class="btn primary" id="saveContract" type="button">Save</button>
+            </div>
+          </div>
+          <p class="hint">Saving a change means everyone who signed will need to sign again.</p>
+        </div>
+      </article>
+
+      <aside class="members">
+        <h3 class="sec">Members and signatures</h3>
+        <p class="hint">Edit a name and it updates on every task. To sign, type your full name.</p>
+        <div id="memberList" class="member-list"></div>
+        <div class="add-member">
+          <input id="newMember" maxlength="80" placeholder="Name" aria-label="New member's name">
+          <input id="newRole" maxlength="80" placeholder="Role (optional)" aria-label="New member's role">
+          <button class="btn primary" id="addMember" type="button">Add</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<!-- Link dialog -->
+<dialog id="linkDlg">
+  <form id="linkForm">
+    <h2 id="linkDlgTitle">Add link</h2>
+    <label>Link<input id="lUrl" required maxlength="1000" inputmode="url" placeholder="Paste a Google Drive, Docs, Figma… link"></label>
+    <label>Title<input id="lTitle" required maxlength="160" placeholder="e.g. Hanged Empress brand assets"></label>
+    <div class="grid2">
+      <label>Section<select id="lSection"></select></label>
+      <label>Added by<select id="lBy"></select></label>
+    </div>
+    <label>Note<input id="lNote" maxlength="240" placeholder="Optional, e.g. final versions only"></label>
+    <div class="actions">
+      <button class="btn danger" id="lDelete" type="button" hidden>Remove link</button>
+      <div class="right">
+        <button class="btn" id="lCancel" type="button">Cancel</button>
+        <button class="btn primary" id="lSave" type="button">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Task dialog -->
+<dialog id="taskDlg">
+  <form id="taskForm">
+    <h2 id="taskDlgTitle">Add task</h2>
+    <label>Task<input id="tTitle" required maxlength="200"></label>
+    <div class="grid2">
+      <label>Tab<select id="tTab"></select></label>
+      <label>Owner<select id="tOwner"></select></label>
+      <label>Status<select id="tStatus"></select></label>
+      <label>Priority<select id="tPriority"><option value="">None</option><option>High</option><option>Medium</option><option>Low</option></select></label>
+      <label>Start<input id="tStart" type="date"></label>
+      <label>Due<input id="tDue" type="date"></label>
+    </div>
+    <label>Link<input id="tLink" maxlength="500" inputmode="url" placeholder="Google Doc, Drive folder, Figma…"></label>
+    <label>Notes<textarea id="tNotes"></textarea></label>
+    <div class="actions">
+      <button class="btn danger" id="tDelete" type="button" hidden>Delete task</button>
+      <div class="right">
+        <button class="btn" id="tCancel" type="button">Cancel</button>
+        <button class="btn primary" id="tSave" type="button">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+const CFG = window.TRACKER_CONFIG;
+const TABS = CFG.TABS;
+const STATUSES = ["To do", "In progress", "In review", "Blocked", "Done"];
+const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 };
+const $ = (id) => document.getElementById(id);
+const PREVIEW = CFG.SUPABASE_URL.startsWith("__") || typeof window.supabase === "undefined";
+
+/* ── Data layer: Supabase when deployed, in-memory examples in preview ── */
+function supabaseStore() {
+  let sb = null;
+  // Pass headers as a plain object: some embedded viewers (like the Claude app preview)
+  // relay requests in a way that can't carry the browser's Headers object.
+  const plainFetch = (input, init = {}) => {
+    const headers = init.headers instanceof Headers ? Object.fromEntries(init.headers.entries()) : init.headers;
+    return fetch(input, { ...init, headers });
+  };
+  try { sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, { global: { fetch: plainFetch } }); } catch (e) { console.error(e); }
+  const err = (r) => (r.error ? r.error.message : null);
+  return {
+    async load() {
+      if (!sb) throw new Error("the Supabase library didn't load");
+      const r = await sb.from("tasks").select("*").order("due_date", { ascending: true, nullsFirst: false });
+      if (r.error) throw new Error(r.error.message);
+      return r.data;
+    },
+    async save(row, id) { return err(id ? await sb.from("tasks").update(row).eq("id", id) : await sb.from("tasks").insert(row)); },
+    async archive(id) { return err(await sb.from("tasks").update({ archived_at: new Date().toISOString() }).eq("id", id)); },
+    async restore(id) { return err(await sb.from("tasks").update({ archived_at: null }).eq("id", id)); },
+    async remove(id) { return err(await sb.from("tasks").delete().eq("id", id)); },
+    async team() {
+      if (!sb) throw new Error("the Supabase library didn't load");
+      const r = await sb.from("team").select("*").order("created_at");
+      if (r.error) throw new Error(r.error.message);
+      return r.data;
+    },
+    async addMember(name, role) { return err(await sb.from("team").insert({ name, role })); },
+    async updateMember(id, patch) { return err(await sb.from("team").update(patch).eq("id", id)); },
+    async links() {
+      if (!sb) throw new Error("the Supabase library didn't load");
+      const r = await sb.from("links").select("*").order("created_at");
+      if (r.error) throw new Error(r.error.message);
+      return r.data;
+    },
+    async saveLink(row, id) { return err(id ? await sb.from("links").update(row).eq("id", id) : await sb.from("links").insert(row)); },
+    async removeLink(id) { return err(await sb.from("links").delete().eq("id", id)); },
+    async contract() {
+      if (!sb) throw new Error("the Supabase library didn't load");
+      const r = await sb.from("contract").select("*").eq("id", 1).maybeSingle();
+      if (r.error) throw new Error(r.error.message);
+      return r.data || { body: "", version: 0 };
+    },
+    async saveContract(body, by, version) {
+      const r = await sb.from("contract").update({ body, updated_by: by, updated_at: new Date().toISOString(), version: version + 1 })
+        .eq("id", 1).eq("version", version).select();
+      if (r.error) return r.error.message;
+      if (!r.data.length) return "conflict";
+      return null;
+    },
+    async renameMember(id, from, to) {
+      return err(await sb.from("team").update({ name: to }).eq("id", id)) || err(await sb.from("tasks").update({ owner: to }).eq("owner", from));
+    },
+    async removeMember(id, name) {
+      return err(await sb.from("tasks").update({ owner: null }).eq("owner", name)) || err(await sb.from("team").delete().eq("id", id));
+    },
+    subscribe(cb) {
+      if (!sb) return;
+      let t; const fire = () => { clearTimeout(t); t = setTimeout(cb, 120); };
+      sb.channel("tracker")
+        .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, fire)
+        .on("postgres_changes", { event: "*", schema: "public", table: "team" }, fire)
+        .on("postgres_changes", { event: "*", schema: "public", table: "contract" }, fire)
+        .on("postgres_changes", { event: "*", schema: "public", table: "links" }, fire)
+        .subscribe();
+    }
+  };
+}
+
+function previewStore() {
+  const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  let tasks = [
+    { id: "t1", tab: "hanged-empress", title: "Example: review three similar brands", owner: "Mahiro", status: "In progress", priority: "High", start_date: day(-2), due_date: day(3), link: "https://docs.google.com/" },
+    { id: "t2", tab: "hanged-empress", title: "Example: draft social content ideas", owner: "Teammate 1", status: "To do", priority: "Medium", start_date: day(4), due_date: day(9) },
+    { id: "t9", tab: "hanged-empress", title: "Example: brand audit slides", owner: "Teammate 2", status: "In review", priority: "Low", due_date: day(2), link: "https://www.figma.com/" },
+    { id: "t3", tab: "hanged-empress", title: "Example: kick off call notes", owner: "Teammate 2", status: "Done", due_date: day(-6) },
+    { id: "t4", tab: "hanged-empress", title: "Example: waiting on brand assets", owner: "Teammate 1", status: "Blocked", due_date: null },
+    { id: "t5", tab: "consultancy-program", title: "Example: outline how students and businesses get matched", owner: "Mahiro", status: "To do", due_date: day(-1) },
+    { id: "t6", tab: "consultancy-program", title: "Example: list businesses to approach", owner: null, status: "To do", due_date: day(5) },
+    { id: "t7", tab: "consultancy-program", title: "Example: draft student sign up form", owner: "Teammate 2", status: "In progress", due_date: day(6) },
+    { id: "t8", tab: "hanged-empress", title: "Example: old moodboard task", owner: "Mahiro", status: "To do", due_date: null, archived_at: new Date(Date.now() - 2 * 864e5).toISOString() }
+  ];
+  const ago = (n) => new Date(Date.now() - n * 864e5).toISOString();
+  let team = [
+    { id: "m1", name: "Mahiro", role: "Team lead", signature: "Mahiro", signed_at: ago(1), signed_version: 2 },
+    { id: "m2", name: "Teammate 1", role: "Research", signature: "Teammate One", signed_at: ago(4), signed_version: 1 },
+    { id: "m3", name: "Teammate 2", role: null, signature: null, signed_at: null, signed_version: null }
+  ];
+  let links = [
+    { id: "l1", section: "general", title: "Example: team shared drive", url: "https://drive.google.com/drive/folders/example", note: "Everything lives in here", added_by: "Mahiro" },
+    { id: "l2", section: "general", title: "Example: meeting notes", url: "https://docs.google.com/document/d/example", note: null, added_by: "Teammate 1" },
+    { id: "l3", section: "hanged-empress", title: "Example: brand audit deck", url: "https://docs.google.com/presentation/d/example", note: "Draft for client review", added_by: "Teammate 2" },
+    { id: "l4", section: "hanged-empress", title: "Example: competitor research", url: "https://docs.google.com/spreadsheets/d/example", note: null, added_by: "Mahiro" },
+    { id: "l5", section: "consultancy-program", title: "Example: student sign up form", url: "https://docs.google.com/forms/d/example", note: null, added_by: "Teammate 2" }
+  ];
+  let contract = { body: "<h2>Example contract</h2><p><i>Replace this with your own.</i></p><h3>How we work</h3><ul><li>We reply in the group chat within <b>24 hours</b> on weekdays.</li><li>Everyone updates their tasks on the tracker before each Monday class.</li></ul><h3>When things go wrong</h3><ol><li>If a deadline is at risk, we say so early and agree a new plan together.</li><li>Decisions are made by majority vote; the team lead breaks ties.</li></ol>", version: 2, updated_at: ago(2), updated_by: "Mahiro" };
+  return {
+    async load() { return structuredClone(tasks); },
+    async save(row, id) {
+      if (id) Object.assign(tasks.find(t => t.id === id), row);
+      else tasks.push({ id: Math.random().toString(36).slice(2), ...row });
+      return null;
+    },
+    async archive(id) { tasks.find(t => t.id === id).archived_at = new Date().toISOString(); return null; },
+    async restore(id) { tasks.find(t => t.id === id).archived_at = null; return null; },
+    async remove(id) { tasks = tasks.filter(t => t.id !== id); return null; },
+    async team() { return structuredClone(team); },
+    async addMember(name, role) { team.push({ id: Math.random().toString(36).slice(2), name, role }); return null; },
+    async updateMember(id, patch) { Object.assign(team.find(m => m.id === id), patch); return null; },
+    async contract() { return structuredClone(contract); },
+    async links() { return structuredClone(links); },
+    async saveLink(row, id) {
+      if (id) Object.assign(links.find(l => l.id === id), row);
+      else links.push({ id: Math.random().toString(36).slice(2), created_at: new Date().toISOString(), ...row });
+      return null;
+    },
+    async removeLink(id) { links = links.filter(l => l.id !== id); return null; },
+    async saveContract(body, by, version) {
+      if (version !== contract.version) return "conflict";
+      contract = { body, updated_by: by, updated_at: new Date().toISOString(), version: version + 1 };
+      return null;
+    },
+    async renameMember(id, from, to) {
+      team.find(m => m.id === id).name = to;
+      tasks.forEach(t => { if (t.owner === from) t.owner = to; });
+      return null;
+    },
+    async removeMember(id, name) {
+      team = team.filter(m => m.id !== id);
+      tasks.forEach(t => { if (t.owner === name) t.owner = null; });
+      return null;
+    },
+    subscribe() {}
+  };
+}
+
+const store = PREVIEW ? previewStore() : supabaseStore();
+const fromHash = ["#archive", "#links"].includes(location.hash) ? { id: location.hash.slice(1) } : TABS.find(t => "#" + t.id === location.hash);
+const state = { tasks: [], archived: [], team: [], links: [], contract: null, tab: (fromHash || TABS[0]).id, owner: "", editing: null,
+  view: location.hash === "#team" ? "team" : "tracker", editingContract: false };
+
+$("teamName").textContent = CFG.TEAM_NAME;
+$("today").textContent = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+$("demoBanner").hidden = !PREVIEW;
+$("tStatus").innerHTML = STATUSES.map(s => `<option>${s}</option>`).join("");
+
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+}
+$("tTab").replaceChildren(...TABS.map(t => el("option", { value: t.id }, t.name)));
+
+function toast(text) {
+  const t = $("toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2400);
+}
+function today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function fmtDate(s) { return new Date(s + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+function isLate(t) { return t.due_date && t.status !== "Done" && new Date(t.due_date + "T00:00:00") < today(); }
+
+
+async function boot() {
+  await loadAll();
+  store.subscribe(loadAll);
+}
+
+async function loadAll() {
+  const problems = [];
+  const [tasks, team, contract, links] = await Promise.allSettled([store.load(), store.team(), store.contract(), store.links()]);
+  if (links.status === "fulfilled") state.links = links.value;
+  else problems.push("Links: " + (links.reason?.message || links.reason));
+  if (contract.status === "fulfilled") state.contract = contract.value;
+  else problems.push("Contract: " + (contract.reason?.message || contract.reason));
+  if (tasks.status === "fulfilled") {
+    state.tasks = tasks.value.filter(t => !t.archived_at);
+    state.archived = tasks.value.filter(t => t.archived_at).sort((a, b) => String(b.archived_at).localeCompare(String(a.archived_at)));
+  } else problems.push("Tasks: " + (tasks.reason?.message || tasks.reason));
+  if (team.status === "fulfilled") state.team = team.value;
+  else problems.push("Team: " + (team.reason?.message || team.reason));
+  try { render(); } catch (e) { problems.push("Page: " + e.message); console.error(e); }
+  showProblem(problems.length ? "Couldn't load from Supabase. " + problems.join(" | ") : "");
+}
+function showProblem(msg) { $("loadError").textContent = msg; $("loadError").hidden = !msg; }
+window.addEventListener("error", (e) => showProblem("Page error: " + e.message));
+
+/* ── Render ── */
+function render() {
+  const onTeam = state.view === "team";
+  $("app").hidden = onTeam; $("teamPage").hidden = !onTeam;
+  $("openTeam").hidden = onTeam; $("backToTracker").hidden = !onTeam;
+  if (onTeam) return renderTeamPage();
+  const openIn = (id) => state.tasks.filter(t => t.tab === id && t.status !== "Done").length;
+
+  const go = (id) => { if (TABS.some(t => t.id === state.tab)) state.lastBoardTab = state.tab; state.tab = id; render(); try { history.replaceState(null, "", "#" + id); } catch {} };
+  $("tabs").replaceChildren(
+    ...TABS.map(t => el("button", { class: "tab", type: "button", role: "tab", "aria-selected": String(state.tab === t.id), onclick: () => go(t.id) },
+      t.name, el("span", { class: "count", title: "Open tasks" }, String(openIn(t.id))))),
+    el("button", { class: "tab small-tab links-tab", type: "button", role: "tab", "aria-selected": String(state.tab === "links"), onclick: () => go("links") },
+      "Links", el("span", { class: "count", title: "Links" }, String(state.links.length))),
+    el("button", { class: "tab small-tab", type: "button", role: "tab", "aria-selected": String(state.tab === "archive"), onclick: () => go("archive") },
+      "Archive", el("span", { class: "count", title: "Archived tasks" }, String(state.archived.length))));
+
+  const inArchive = state.tab === "archive", inLinks = state.tab === "links";
+  $("boardPanel").hidden = inArchive || inLinks; $("archivePanel").hidden = !inArchive; $("linksPanel").hidden = !inLinks;
+  if (inArchive) return renderArchive();
+  if (inLinks) return renderLinks();
+
+  const tab = TABS.find(t => t.id === state.tab);
+  $("panelMeta").textContent = tab.about || "";
+
+  const owners = [...new Set([...state.team.map(m => m.name), ...state.tasks.map(t => t.owner).filter(Boolean)])];
+  const keep = state.owner;
+  $("ownerFilter").replaceChildren(el("option", { value: "" }, "Everyone"), ...owners.map(o => el("option", { value: o }, o)));
+  $("ownerFilter").value = owners.includes(keep) ? keep : "";
+
+  const tasks = state.tasks.filter(t => t.tab === state.tab && (!state.owner || t.owner === state.owner));
+  const open = tasks.filter(t => t.status !== "Done");
+  const late = open.filter(isLate).length;
+  const week = open.filter(t => t.due_date && !isLate(t) && (new Date(t.due_date + "T00:00:00") - today()) / 864e5 <= 7).length;
+  $("summary").replaceChildren(
+    el("span", {}, el("b", {}, String(open.length)), "open"),
+    el("span", { class: late ? "overdue" : "" }, el("b", {}, String(late)), "overdue"),
+    el("span", {}, el("b", {}, String(week)), "due this week"),
+    el("span", {}, el("b", {}, String(tasks.length - open.length)), "done"));
+
+  const board = $("board"); board.replaceChildren();
+  for (const s of STATUSES) {
+    const items = tasks.filter(t => t.status === s).sort((a, b) =>
+      (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3) || (a.due_date || "9999").localeCompare(b.due_date || "9999"));
+    const col = el("div", { class: "col" }, el("h3", {}, el("span", {}, s), el("span", {}, String(items.length))));
+    col.addEventListener("dragover", (e) => { if (!dragId) return; e.preventDefault(); col.classList.add("drop"); });
+    col.addEventListener("dragleave", (e) => { if (!col.contains(e.relatedTarget)) col.classList.remove("drop"); });
+    col.addEventListener("drop", (e) => { e.preventDefault(); col.classList.remove("drop"); moveTask(dragId, s); });
+    if (!items.length) col.append(el("div", { class: "empty" }, s === "To do" ? "Nothing waiting." : "None"));
+    for (const t of items) col.append(taskCard(t));
+    board.append(col);
+  }
+}
+
+function taskCard(t) {
+  const card = el("div", { class: "task", role: "button", tabindex: "0", draggable: "true", "aria-label": "Open task: " + t.title },
+    el("div", { class: "top" }, el("span", { class: "t" }, t.title), t.priority ? el("span", { class: "prio " + t.priority }, t.priority) : null),
+    el("span", { class: "m" },
+      el("span", {}, t.owner || "Unassigned"),
+      t.start_date ? el("span", {}, "Start " + fmtDate(t.start_date)) : null,
+      t.due_date ? el("span", { class: "due" + (isLate(t) ? " late" : "") }, (isLate(t) ? "Overdue · " : "Due ") + fmtDate(t.due_date)) : null),
+    t.link && /^https?:\/\//i.test(t.link) ? el("a", { class: "golink", href: t.link, target: "_blank", rel: "noopener noreferrer", draggable: "false" }, "Open link ↗") : null);
+  card.addEventListener("click", (e) => { if (!e.target.closest("a")) openTask(t); });
+  card.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === card) { e.preventDefault(); openTask(t); } });
+  card.addEventListener("dragstart", (e) => { dragId = t.id; card.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", t.id); });
+  card.addEventListener("dragend", () => { dragId = null; card.classList.remove("dragging"); document.querySelectorAll(".col.drop").forEach(c => c.classList.remove("drop")); });
+  return card;
+}
+
+let dragId = null;
+async function moveTask(id, status) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t || t.status === status) return;
+  if (String(id).startsWith("tmp-")) return toast("Still saving, try again in a moment");
+  const before = t.status;
+  t.status = status; render();               // move it straight away
+  const error = await store.save({ status }, id);
+  if (error) { t.status = before; render(); return toast("Couldn't move task: " + error); }
+  toast(`Moved to ${status}`);
+}
+
+function renderArchive() {
+  const list = $("archiveList");
+  if (!state.archived.length) return list.replaceChildren(el("div", { class: "empty" }, "Nothing in the archive. Deleted tasks will show up here."));
+  const tabName = Object.fromEntries(TABS.map(t => [t.id, t.name]));
+  list.replaceChildren(...state.archived.map(t => {
+    const restore = el("button", { class: "btn small primary", type: "button" }, "Restore");
+    restore.onclick = async () => {
+      state.archived = state.archived.filter(x => x.id !== t.id);
+      state.tasks.push({ ...t, archived_at: null });
+      render(); toast(`Restored to ${tabName[t.tab] || "its tab"}`);
+      const error = await store.restore(t.id);
+      if (error) toast("Couldn't restore, so it was undone: " + error);
+      loadAll();
+    };
+    const purge = el("button", { class: "btn small danger", type: "button" }, "Delete forever");
+    purge.onclick = async () => {
+      if (!purge.dataset.armed) { purge.dataset.armed = "1"; purge.textContent = "Click again, can't be undone"; return; }
+      const error = await store.remove(t.id);
+      if (error) return toast("Couldn't delete: " + error);
+      toast("Deleted for good"); loadAll();
+    };
+    const when = new Date(t.archived_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    return el("div", { class: "arow" },
+      el("div", { class: "info" },
+        el("span", { class: "t" }, t.title),
+        el("span", { class: "m" }, [tabName[t.tab] || t.tab, t.owner || "Unassigned", t.status, t.priority, "Deleted " + when].filter(Boolean).join(" · "))),
+      el("div", { class: "acts" }, restore, purge));
+  }));
+}
+
+$("ownerFilter").addEventListener("change", (e) => { state.owner = e.target.value; render(); });
+
+/* ── Task dialog ── */
+function openTask(t) {
+  if (t && String(t.id).startsWith("tmp-")) return toast("Still saving, try again in a moment");
+  state.editing = t || null;
+  $("taskDlgTitle").textContent = t ? "Edit task" : "Add task";
+  $("tTab").value = t?.tab || (state.tab === "archive" ? TABS[0].id : state.tab);
+  const names = state.team.map(m => m.name);
+  if (t?.owner && !names.includes(t.owner)) names.push(t.owner);
+  $("tOwner").replaceChildren(el("option", { value: "" }, "Unassigned"), ...names.map(n => el("option", { value: n }, n)));
+  $("tTitle").value = t?.title || ""; $("tOwner").value = t?.owner || "";
+  $("tStatus").value = t?.status || "To do"; $("tDue").value = t?.due_date || ""; $("tNotes").value = t?.notes || "";
+  $("tPriority").value = t?.priority || ""; $("tStart").value = t?.start_date || ""; $("tLink").value = t?.link || "";
+  const del = $("tDelete");
+  del.hidden = !t;
+  del.onclick = async () => {
+    $("taskDlg").close();
+    state.tasks = state.tasks.filter(x => x.id !== t.id);
+    state.archived.unshift({ ...t, archived_at: new Date().toISOString() });
+    render(); toast("Task moved to Archive");
+    const error = await store.archive(t.id);
+    if (error) toast("Couldn't delete, so it was undone: " + error);
+    loadAll();
+  };
+  $("taskDlg").showModal();
+}
+$("addTask").addEventListener("click", () => openTask());
+$("tCancel").addEventListener("click", () => $("taskDlg").close());
+$("taskForm").addEventListener("submit", (e) => { e.preventDefault(); saveTask(); });
+$("tSave").addEventListener("click", () => saveTask());
+$("tTitle").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveTask(); } });
+async function saveTask() {
+  if (!$("taskForm").reportValidity()) return;
+  const start = $("tStart").value || null, due = $("tDue").value || null;
+  if (start && due && start > due) return toast("Start date is after the due date");
+  let link = $("tLink").value.trim() || null;
+  if (link && !/^https?:\/\//i.test(link)) link = "https://" + link;
+  $("taskDlg").close();
+  const row = { title: $("tTitle").value.trim(), tab: $("tTab").value, owner: $("tOwner").value || null,
+    status: $("tStatus").value, priority: $("tPriority").value || null, start_date: start, due_date: due,
+    link, notes: $("tNotes").value.trim() || null };
+  // Show the change straight away, then save in the background
+  const editing = state.editing;
+  if (editing) Object.assign(state.tasks.find(t => t.id === editing.id) || {}, row);
+  else state.tasks.push({ id: "tmp-" + Date.now(), ...row });
+  render(); toast(editing ? "Task updated" : "Task added");
+  const error = await store.save(row, editing?.id);
+  if (error) toast("Couldn't save task, so it was undone: " + error);
+  loadAll();
+}
+
+/* ── Links ── */
+const LINK_SECTIONS = [{ id: "general", name: "General" }, ...TABS.map(t => ({ id: t.id, name: t.name }))];
+$("lSection").replaceChildren(...LINK_SECTIONS.map(x => el("option", { value: x.id }, x.name)));
+function linkType(url) {
+  const u = String(url).toLowerCase();
+  if (u.includes("docs.google.com/document")) return ["Doc", "doc"];
+  if (u.includes("docs.google.com/spreadsheets")) return ["Sheet", "sheet"];
+  if (u.includes("docs.google.com/presentation")) return ["Slides", "slides"];
+  if (u.includes("docs.google.com/forms") || u.includes("forms.gle")) return ["Form", ""];
+  if (u.includes("drive.google.com")) return ["Drive", "drive"];
+  if (u.includes("figma.com")) return ["Figma", ""];
+  if (u.includes("canva.com")) return ["Canva", ""];
+  if (u.includes("notion.")) return ["Notion", ""];
+  if (u.includes("miro.com")) return ["Miro", ""];
+  return ["Link", ""];
+}
+function hostOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } }
+function renderLinks() {
+  const grid = $("linksGrid");
+  grid.replaceChildren(...LINK_SECTIONS.map(sec => {
+    const items = state.links.filter(l => (l.section || "general") === sec.id || (sec.id === "general" && !LINK_SECTIONS.some(x => x.id === l.section)));
+    const box = el("div", { class: "link-sec" }, el("h3", {}, el("span", {}, sec.name), el("span", {}, String(items.length))));
+    if (!items.length) box.append(el("div", { class: "empty" }, "No links yet."));
+    for (const l of items) {
+      const [label, cls] = linkType(l.url);
+      const safe = /^https?:\/\//i.test(l.url);
+      const edit = el("button", { class: "btn small", type: "button", "aria-label": "Edit " + l.title }, "Edit");
+      edit.onclick = () => openLink(l);
+      box.append(el("div", { class: "lrow" },
+        el("span", { class: "ltype " + cls }, label),
+        el("div", { class: "linfo" },
+          safe ? el("a", { href: l.url, target: "_blank", rel: "noopener noreferrer" }, l.title + " ↗") : el("span", {}, l.title),
+          l.note ? el("span", { class: "note" }, l.note) : null,
+          el("span", { class: "m" }, [hostOf(l.url), l.added_by ? "Added by " + l.added_by : ""].filter(Boolean).join(" · "))),
+        edit));
+    }
+    return box;
+  }));
+}
+let editingLink = null;
+function openLink(l) {
+  if (l && String(l.id).startsWith("tmp-")) return toast("Still saving, try again in a moment");
+  editingLink = l || null;
+  $("linkDlgTitle").textContent = l ? "Edit link" : "Add link";
+  $("lUrl").value = l?.url || ""; $("lTitle").value = l?.title || ""; $("lNote").value = l?.note || "";
+  $("lSection").value = l?.section || (TABS.some(t => t.id === state.lastBoardTab) ? state.lastBoardTab : "general");
+  const names = state.team.map(m => m.name);
+  if (l?.added_by && !names.includes(l.added_by)) names.push(l.added_by);
+  $("lBy").replaceChildren(el("option", { value: "" }, "Choose your name"), ...names.map(n => el("option", { value: n }, n)));
+  $("lBy").value = l?.added_by || "";
+  const del = $("lDelete"); del.hidden = !l; del.textContent = "Remove link"; delete del.dataset.armed;
+  del.onclick = async () => {
+    if (!del.dataset.armed) { del.dataset.armed = "1"; del.textContent = "Click again to remove"; return; }
+    $("linkDlg").close();
+    state.links = state.links.filter(x => x.id !== l.id); render(); toast("Link removed");
+    const error = await store.removeLink(l.id);
+    if (error) toast("Couldn't remove, so it was undone: " + error);
+    loadAll();
+  };
+  $("linkDlg").showModal(); $("lUrl").focus();
+}
+// Suggest a title from the link type when the title is empty
+$("lUrl").addEventListener("change", () => {
+  if ($("lTitle").value.trim()) return;
+  const [label] = linkType($("lUrl").value);
+  if (label !== "Link") $("lTitle").placeholder = "Name this " + label.toLowerCase();
+});
+async function saveLink() {
+  if (!$("linkForm").reportValidity()) return;
+  let url = $("lUrl").value.trim();
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  try { new URL(url); } catch { return toast("That doesn't look like a link"); }
+  const row = { url, title: $("lTitle").value.trim(), section: $("lSection").value, note: $("lNote").value.trim() || null, added_by: $("lBy").value || null };
+  $("linkDlg").close();
+  const editing = editingLink;
+  if (editing) Object.assign(state.links.find(x => x.id === editing.id) || {}, row);
+  else state.links.push({ id: "tmp-" + Date.now(), ...row });
+  render(); toast(editing ? "Link updated" : "Link added");
+  const error = await store.saveLink(row, editing?.id);
+  if (error) toast("Couldn't save link, so it was undone: " + error);
+  loadAll();
+}
+$("addLink").addEventListener("click", () => openLink());
+$("lSave").addEventListener("click", saveLink);
+$("lCancel").addEventListener("click", () => $("linkDlg").close());
+$("linkForm").addEventListener("submit", (e) => { e.preventDefault(); saveLink(); });
+for (const id of ["lUrl", "lTitle", "lNote"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveLink(); } });
+
+/* ── Team page ── */
+function go(view) {
+  state.view = view; render(); window.scrollTo(0, 0);
+  try { history.replaceState(null, "", view === "team" ? "#team" : "#" + state.tab); } catch {}
+}
+$("openTeam").addEventListener("click", () => go("team"));
+$("backToTracker").addEventListener("click", () => go("tracker"));
+
+function fmtDay(iso) { return iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : ""; }
+
+function renderTeamPage() {
+  const c = state.contract || { body: "", version: 0 };
+  const signedNow = state.team.filter(m => m.signature && m.signed_version === c.version && c.version > 0).length;
+  $("signSummary").replaceChildren(
+    el("span", {}, el("b", {}, String(state.team.length)), state.team.length === 1 ? "member" : "members"),
+    el("span", {}, el("b", {}, `${signedNow}/${state.team.length}`), "signed"));
+
+  // Contract
+  $("contractMeta").textContent = c.version > 0
+    ? `Version ${c.version} · Last edited ${fmtDay(c.updated_at)}${c.updated_by ? " by " + c.updated_by : ""}`
+    : "Not written yet";
+  if (!state.editingContract) {   // never overwrite what someone is typing
+    const html = contractHtml(c.body);
+    if (html) $("contractBody").innerHTML = html;
+    else $("contractBody").replaceChildren(el("p", { class: "empty" }, "No contract yet. Click Edit to write or paste in your team contract."));
+  }
+  $("contractTools").hidden = !state.editingContract;
+  $("contractEdit").hidden = !state.editingContract;
+  $("editContract").hidden = state.editingContract;
+
+  // Members (don't redraw while someone is typing in the list)
+  const list = $("memberList");
+  if (list.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName)) return;
+  if (!state.team.length) return list.replaceChildren(el("div", { class: "empty" }, "No members yet. Add the first name below."));
+  list.replaceChildren(...state.team.map(m => memberCard(m, c)));
+}
+
+function memberCard(m, c) {
+  const name = el("input", { class: "name", value: m.name, maxlength: "80", "aria-label": "Name", id: "member-" + m.id });
+  const role = el("input", { value: m.role || "", maxlength: "80", placeholder: "Role", "aria-label": "Role", id: "role-" + m.id });
+  const rm = el("button", { class: "btn danger small", type: "button" }, "Remove");
+  const enterBlurs = (e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } };
+  name.addEventListener("keydown", enterBlurs); role.addEventListener("keydown", enterBlurs);
+  name.addEventListener("change", async () => {
+    const to = name.value.trim();
+    if (!to || to === m.name) { name.value = m.name; return; }
+    if (state.team.some(x => x.id !== m.id && x.name.toLowerCase() === to.toLowerCase())) { name.value = m.name; return toast("That name is already on the team"); }
+    const error = await store.renameMember(m.id, m.name, to);
+    if (error) { name.value = m.name; return toast("Couldn't rename: " + error); }
+    toast(`Renamed to ${to}`); loadAll();
+  });
+  role.addEventListener("change", async () => {
+    const error = await store.updateMember(m.id, { role: role.value.trim() || null });
+    if (error) return toast("Couldn't save role: " + error);
+    toast("Role saved"); loadAll();
+  });
+  rm.onclick = async () => {
+    if (!rm.dataset.armed) { rm.dataset.armed = "1"; rm.textContent = "Confirm"; return; }
+    const error = await store.removeMember(m.id, m.name);
+    if (error) return toast("Couldn't remove: " + error);
+    toast(`${m.name} removed`); loadAll();
+  };
+
+  const sig = el("div", { class: "sig" });
+  const current = m.signature && c.version > 0 && m.signed_version === c.version;
+  const signBtn = el("button", { class: "btn small" + (current ? "" : " primary"), type: "button" }, current ? "Remove signature" : (m.signature ? "Sign again" : "Sign"));
+  if (current) sig.append(el("span", { class: "ink" }, m.signature), el("span", { class: "when" }, "Signed " + fmtDay(m.signed_at)));
+  else if (m.signature) sig.append(el("span", { class: "stale" }, `Signed version ${m.signed_version}. The contract has changed since.`));
+  else sig.append(el("span", { class: "unsigned" }, c.version > 0 ? "Not signed yet" : "Nothing to sign yet"));
+  if (c.version > 0) sig.append(signBtn);
+  signBtn.onclick = async () => {
+    if (current) {
+      const error = await store.updateMember(m.id, { signature: null, signed_at: null, signed_version: null });
+      if (error) return toast("Couldn't remove signature: " + error);
+      toast("Signature removed"); return loadAll();
+    }
+    const input = el("input", { placeholder: `Type ${m.name}'s full name`, maxlength: "80", "aria-label": "Type your full name to sign", id: "sign-" + m.id });
+    const ok = el("button", { class: "btn small primary", type: "button" }, "Sign");
+    const cancel = el("button", { class: "btn small", type: "button" }, "Cancel");
+    const submit = async () => {
+      const text = input.value.trim();
+      if (text.length < 2) return toast("Type your full name to sign");
+      const error = await store.updateMember(m.id, { signature: text, signed_at: new Date().toISOString(), signed_version: c.version });
+      if (error) return toast("Couldn't sign: " + error);
+      toast(`Signed by ${text}`); input.blur(); loadAll();
+    };
+    ok.onclick = submit; cancel.onclick = () => { input.blur(); renderTeamPage(); };
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
+    sig.replaceChildren(el("div", { class: "sign-form" }, input, ok, cancel));
+    input.focus();
+  };
+
+  return el("div", { class: "member" }, el("div", { class: "row" }, name, rm), el("div", { class: "row" }, role), sig);
+}
+
+/* ── Contract editor ── */
+const ALLOWED_TAGS = new Set(["P", "DIV", "BR", "B", "STRONG", "I", "EM", "U", "UL", "OL", "LI", "BLOCKQUOTE", "H2", "H3", "SPAN"]);
+const DROP_TAGS = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "TEMPLATE", "SVG", "MATH", "META", "LINK", "TITLE", "HEAD"]);
+// Keep only simple formatting, so text pasted from anywhere (or typed into the database) can't run code
+function cleanHtml(html) {
+  const doc = new DOMParser().parseFromString("<div>" + (html || "") + "</div>", "text/html");
+  const root = doc.body.firstElementChild;
+  (function walk(node) {
+    for (const child of [...node.childNodes]) {
+      if (child.nodeType === 3) continue;
+      if (child.nodeType !== 1 || DROP_TAGS.has(child.tagName)) { child.remove(); continue; }
+      walk(child);
+      if (!ALLOWED_TAGS.has(child.tagName)) { child.replaceWith(...child.childNodes); continue; }
+      const align = child.style.textAlign, indent = child.style.marginLeft;
+      const bold = /bold|[6-9]00/.test(child.style.fontWeight), italic = child.style.fontStyle === "italic";
+      for (const a of [...child.attributes]) child.removeAttribute(a.name);
+      if (/^(left|center|right|justify)$/.test(align)) child.style.textAlign = align;
+      if (/^(BLOCKQUOTE|P|DIV|H2|H3)$/.test(child.tagName) && /^\d+(\.\d+)?(px|em)$/.test(indent)) child.style.marginLeft = indent;
+      if (child.tagName === "SPAN") {   // pasted text often marks bold/italic with styles
+        let inner = child;
+        if (bold) { const b = doc.createElement("b"); b.append(...inner.childNodes); inner.append(b); }
+        if (italic) { const i = doc.createElement("i"); i.append(...inner.childNodes); inner.append(i); }
+        child.replaceWith(...child.childNodes);
+      }
+    }
+  })(root);
+  return root.innerHTML.trim();
+}
+// Older contracts were plain text: turn blank-line paragraphs into <p>
+function contractHtml(body) {
+  if (!body) return "";
+  if (/<(p|div|ul|ol|h2|h3|b|i|u|br|blockquote|strong|em)[\s>\/]/i.test(body)) return cleanHtml(body);
+  return body.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean).map(x => { const p = document.createElement("p"); p.textContent = x; return p.outerHTML.replace(/\n/g, "<br>"); }).join("");
+}
+
+const editor = $("contractBody");
+function setEditing(on) {
+  state.editingContract = on;
+  editor.contentEditable = on ? "true" : "false";
+  if (on) {
+    try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch {}
+    try { document.execCommand("styleWithCSS", false, false); } catch {}
+    if (editor.querySelector(".empty")) editor.innerHTML = "";
+  }
+  renderTeamPage();
+  if (on) { editor.focus(); updateTools(); }
+}
+function updateTools() {
+  if (!state.editingContract) return;
+  for (const b of document.querySelectorAll("#contractTools [data-cmd]")) {
+    let on = false;
+    try { on = document.queryCommandState(b.dataset.cmd); } catch {}
+    b.setAttribute("aria-pressed", String(!!on));
+  }
+  let block = "p";
+  try { block = (document.queryCommandValue("formatBlock") || "p").toLowerCase(); } catch {}
+  $("blockStyle").value = ["h2", "h3"].includes(block) ? block : "p";
+}
+for (const b of document.querySelectorAll("#contractTools [data-cmd]")) {
+  b.addEventListener("mousedown", (e) => e.preventDefault());   // keep the text selection
+  b.addEventListener("click", () => { editor.focus(); document.execCommand(b.dataset.cmd, false, null); updateTools(); });
+}
+$("blockStyle").addEventListener("change", (e) => { editor.focus(); document.execCommand("formatBlock", false, e.target.value); updateTools(); });
+document.addEventListener("selectionchange", () => { if (state.editingContract && editor.contains(document.getSelection()?.anchorNode)) updateTools(); });
+editor.addEventListener("keyup", updateTools);
+editor.addEventListener("keydown", (e) => {
+  if (e.key === "Tab" && state.editingContract) { e.preventDefault(); document.execCommand(e.shiftKey ? "outdent" : "indent", false, null); updateTools(); }
+});
+editor.addEventListener("paste", (e) => {
+  if (!state.editingContract) return;
+  const html = e.clipboardData?.getData("text/html");
+  const text = e.clipboardData?.getData("text/plain");
+  e.preventDefault();
+  if (html) document.execCommand("insertHTML", false, cleanHtml(html));
+  else if (text) document.execCommand("insertText", false, text);
+});
+
+$("editContract").addEventListener("click", () => {
+  $("contractBy").replaceChildren(el("option", { value: "" }, "Choose your name"), ...state.team.map(m => el("option", { value: m.name }, m.name)));
+  setEditing(true);
+});
+$("cancelContract").addEventListener("click", () => setEditing(false));
+$("saveContract").addEventListener("click", async () => {
+  const by = $("contractBy").value;
+  if (!by) return toast("Choose your name under Edited by");
+  const c = state.contract || { version: 0 };
+  const body = cleanHtml(editor.innerHTML);
+  if (body === contractHtml(c.body)) return setEditing(false);
+  const error = await store.saveContract(body, by, c.version || 0);
+  if (error === "conflict") return toast("Someone saved the contract while you were editing. Copy your text, refresh and try again.");
+  if (error) return toast("Couldn't save the contract: " + error);
+  setEditing(false); toast("Contract saved. Everyone needs to sign again."); loadAll();
+});
+
+async function addMember() {
+  const name = $("newMember").value.trim();
+  if (!name) return toast("Type a name first");
+  if (state.team.some(m => m.name.toLowerCase() === name.toLowerCase())) return toast("That name is already on the team");
+  const role = $("newRole").value.trim() || null;
+  $("newMember").value = ""; $("newRole").value = "";
+  state.team.push({ id: "tmp-" + Date.now(), name, role }); render(); toast(`${name} added`);
+  const error = await store.addMember(name, role);
+  if (error) toast("Couldn't add, so it was undone: " + error);
+  loadAll();
+}
+$("addMember").addEventListener("click", addMember);
+$("newMember").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addMember(); } });
+$("newRole").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addMember(); } });
+
+boot();
+</script>
+</body>
+</html>
